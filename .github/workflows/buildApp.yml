@@ -1,18 +1,49 @@
 name: Release build
 
-on:
-  workflow_dispatch
-
+on: workflow_dispatch
+    
 jobs:
   build:
-    name: Release build
     runs-on: macos-latest
     steps:
-      - name: Build for ios
+      - uses: actions/checkout@main
+
+      - name: Fetch Orion's latest commit
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          export PATH=/opt/homebrew/bin:$PATH
-          export RUNNER=1
-          make package PLATFORM=ios
+          latest_commit=$(gh api -H 'Accept: application/vnd.github.sha' \
+          /repos/theos/orion/commits/master); echo "latest_commit=$latest_commit" >> $GITHUB_OUTPUT
+        id: commit
+
+      - uses: actions/cache@v4
+        id: cache-theos
+        with:
+          path: ${{ github.workspace }}/theos
+          key: steps.commit.outputs.latest_commit
+
+      - name: Checkout theos/theos
+        if: steps.cache-theos.outputs.cache-hit != 'true'
+        uses: actions/checkout@main
+        with:
+          repository: theos/theos
+          ref: master
+          submodules: recursive
+          path: theos
+      - name: Checkout theos/sdks
+        uses: actions/checkout@main
+        with:
+          repository: theos/sdks
+          ref: master
+          sparse-checkout: iPhoneOS16.5.sdk
+          path: theos/sdks
+
+      - name: Build App
+        run: |
+          brew install make ldid
+          export THEOS=theos
+          THEOS=theos gmake package TARGET="iphone:clang:latest:latest" FINALPACKAGE=1
+
       - name: Upload regular ipa
         uses: actions/upload-artifact@v3
         with:
