@@ -6,19 +6,13 @@ on:
 jobs:
   build:
     name: Release build
-    strategy:
-      matrix:
-        include:
-          - platform: 1
-            platform_name: ios
-    
     runs-on: macos-latest
     steps:
       - name: Build for ios
         run: |
           export PATH=/opt/homebrew/bin:$PATH
           export RUNNER=1
-          gmake -j$(sysctl -n hw.ncpu) dsym package PLATFORM=ios
+          make -j$(sysctl -n hw.ncpu) dsym package PLATFORM=ios
       - name: Upload regular ipa
         uses: actions/upload-artifact@v3
         with:
